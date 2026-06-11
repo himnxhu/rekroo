@@ -17,7 +17,14 @@ export async function POST(request: Request) {
 
   const parsed = registerSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid signup details", details: parsed.error.flatten() }, { status: 400 });
+    const fields = parsed.error.flatten().fieldErrors;
+    const error =
+      fields.password?.[0] ??
+      fields.email?.[0] ??
+      fields.name?.[0] ??
+      fields.companyName?.[0] ??
+      "Invalid signup details.";
+    return NextResponse.json({ error, details: parsed.error.flatten() }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });

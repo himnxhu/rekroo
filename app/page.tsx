@@ -66,6 +66,7 @@ export default function Home() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authLoading, setAuthLoading] = useState(true);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authForm, setAuthForm] = useState({
     name: "",
@@ -123,28 +124,35 @@ export default function Home() {
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAuthError("");
+    setAuthSubmitting(true);
 
-    const endpoint = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
-    const payload =
-      authMode === "login"
-        ? { email: authForm.email, password: authForm.password }
-        : authForm;
+    try {
+      const endpoint = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const payload =
+        authMode === "login"
+          ? { email: authForm.email, password: authForm.password }
+          : authForm;
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await response.json();
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-      setAuthError(data.error ?? "Authentication failed.");
-      return;
+      if (!response.ok) {
+        setAuthError(data.error ?? "Authentication failed.");
+        return;
+      }
+
+      setWorkspace({ user: data.user, company: data.company });
+      setAuthForm({ name: "", email: "", password: "", companyName: "" });
+      await loadCandidates();
+    } catch {
+      setAuthError("Could not reach the authentication service. Check that the app and database are running.");
+    } finally {
+      setAuthSubmitting(false);
     }
-
-    setWorkspace({ user: data.user, company: data.company });
-    setAuthForm({ name: "", email: "", password: "", companyName: "" });
-    await loadCandidates();
   }
 
   async function logout() {
@@ -384,18 +392,21 @@ export default function Home() {
                     <Label>Password</Label>
                     <Input
                       type="password"
+                      minLength={8}
                       value={authForm.password}
                       onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })}
                     />
+                    {authMode === "register" ? <p className="text-xs text-muted-foreground">Use at least 8 characters.</p> : null}
                   </div>
                   {authError ? <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-red-200">{authError}</p> : null}
-                  <Button className="w-full" type="submit">
-                    {authMode === "login" ? "Log in" : "Create workspace"}
+                  <Button className="w-full" type="submit" disabled={authSubmitting}>
+                    {authSubmitting ? "Please wait..." : authMode === "login" ? "Log in" : "Create workspace"}
                   </Button>
                   <Button
                     className="w-full"
                     type="button"
                     variant="ghost"
+                    disabled={authSubmitting}
                     onClick={() => {
                       setAuthError("");
                       setAuthMode(authMode === "login" ? "register" : "login");
