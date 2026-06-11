@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rekroo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rekroo
+      POSTGRES_PASSWORD: rekroo
+      POSTGRES_DB: rekroo
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - rekroo-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  rekroo-postgres-data:

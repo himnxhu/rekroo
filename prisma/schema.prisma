@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Candidate {
+  id         String            @id @default(cuid())
+  companyId  String?
+  name       String
+  phone      String
+  role       String
+  location   String
+  salary     String
+  experience String            @default("Not captured")
+  status     String            @default("New")
+  score      Int               @default(0)
+  lastTouch  String            @default("Created")
+  nextAction String            @default("AI call pending")
+  language   String            @default("Hinglish")
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  company    Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  callLogs   CallLog[]
+  messages   WhatsAppMessage[]
+
+  @@index([companyId])
+  @@index([phone])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Campaign {
+  id                 String    @id @default(cuid())
+  companyId          String?
+  role               String
+  location           String
+  salary             String
+  shift              String
+  language           String
+  maxConcurrentCalls Int       @default(20)
+  status             String    @default("draft")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  company            Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  callLogs           CallLog[]
+
+  @@index([companyId])
+}
+
+model Company {
+  id         String      @id @default(cuid())
+  name       String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  users      User[]
+  candidates Candidate[]
+  campaigns  Campaign[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("owner")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([email])
+}
+
+model CallLog {
+  id            String    @id @default(cuid())
+  candidateId   String
+  campaignId    String?
+  provider      String    @default("twilio")
+  providerCallId String?
+  status        String    @default("queued")
+  transcript    String?
+  summary       String?
+  recordingUrl  String?
+  durationSec   Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  candidate     Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  campaign      Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([candidateId])
+  @@index([campaignId])
+  @@index([status])
+}
+
+model WhatsAppMessage {
+  id          String    @id @default(cuid())
+  candidateId String
+  provider    String    @default("wati")
+  template    String
+  status      String    @default("scheduled")
+  providerMessageId String?
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([status])
+}
